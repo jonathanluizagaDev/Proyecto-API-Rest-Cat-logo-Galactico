@@ -29,7 +29,7 @@ public static class EventoEndpoints
         {
             var result = service.CreateEvento(input);
             return result.IsSuccess
-                ? Results.Created($"/api/eventos/{result.Value!.Id}", result.Value)
+                ? Results.Created($"/eventos/{result.Value!.Id}", result.Value)
                 : EndpointResults.BadRequest(result);
         })
             .WithName("CrearEvento")

@@ -15,7 +15,7 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/openapi/v1.json", "Catálogo Galáctico API v1"));
 }
 
-var api = app.MapGroup("/api");
+var api = app.MapGroup(string.Empty);
 api.MapPersonajeEndpoints();
 api.MapCartaEndpoints();
 api.MapEventoEndpoints();

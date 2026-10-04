@@ -1,0 +1,119 @@
+@host = http://localhost:5048
+@contentType = application/json
+
+### Redirección a Swagger
+GET {{host}}/
+
+### Listar personajes
+GET {{host}}/personajes
+
+### Filtrar personajes
+GET {{host}}/personajes?faccion=Rebelde&fuerzaSensitivo=true
+
+### Obtener personaje
+GET {{host}}/personajes/1
+
+### Ranking por poder
+GET {{host}}/personajes/ranking?por=poder
+
+### Eventos de un personaje
+GET {{host}}/personajes/1/eventos
+
+### Crear personaje
+POST {{host}}/personajes
+Content-Type: {{contentType}}
+
+{
+  "nombre": "Ahsoka Tano",
+  "especie": "Togruta",
+  "faccion": "Neutral",
+  "afiliacion": "Orden Jedi",
+  "estado": "vivo",
+  "fuerzaSensitivo": true
+}
+
+### Actualizar personaje
+PUT {{host}}/personajes/5
+Content-Type: {{contentType}}
+
+{
+  "nombre": "Ahsoka Tano",
+  "especie": "Togruta",
+  "faccion": "Neutral",
+  "afiliacion": "Fulcrum",
+  "estado": "vivo",
+  "fuerzaSensitivo": true
+}
+
+### Eliminar personaje sin relaciones
+DELETE {{host}}/personajes/5
+
+### Listar cartas
+GET {{host}}/cartas
+
+### Obtener carta
+GET {{host}}/cartas/1
+
+### Crear carta
+POST {{host}}/cartas
+Content-Type: {{contentType}}
+
+{
+  "personajeId": 5,
+  "poder": 90,
+  "habilidadEspecial": "Doble sable",
+  "arma": "Sables de luz",
+  "nivelPeligrosidad": 9,
+  "imagenUrl": "https://upload.wikimedia.org/wikipedia/en/d/d7/Ahsoka_Tano.png"
+}
+
+### Actualizar carta
+PUT {{host}}/cartas/1
+Content-Type: {{contentType}}
+
+{
+  "personajeId": 1,
+  "poder": 95,
+  "habilidadEspecial": "Dominio de la Fuerza",
+  "arma": "Sable de luz",
+  "nivelPeligrosidad": 9,
+  "imagenUrl": "https://upload.wikimedia.org/wikipedia/commons/6/67/Luke_Skywalker_-_Welcome_Banner_%28Cropped%29.jpg"
+}
+
+### Listar eventos
+GET {{host}}/eventos
+
+### Obtener evento
+GET {{host}}/eventos/1
+
+### Crear evento
+POST {{host}}/eventos
+Content-Type: {{contentType}}
+
+{
+  "nombre": "Encuentro galáctico",
+  "fecha": 2,
+  "ubicacion": "Borde Exterior",
+  "descripcion": "Encuentro entre dos facciones.",
+  "participanteIds": [2, 5],
+  "fallecidoIds": []
+}
+
+### Actualizar evento
+PUT {{host}}/eventos/1
+Content-Type: {{contentType}}
+
+{
+  "nombre": "Batalla de Yavin",
+  "fecha": 0,
+  "ubicacion": "Yavin IV",
+  "descripcion": "Destrucción de la primera Estrella de la Muerte.",
+  "participanteIds": [1, 2, 3, 4],
+  "fallecidoIds": []
+}
+
+### Obtener MVP
+GET {{host}}/eventos/1/mvp
+
+### Simular batalla
+POST {{host}}/eventos/1/simular

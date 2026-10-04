@@ -29,7 +29,7 @@ public static class CartaEndpoints
         {
             var result = service.CreateCarta(input);
             return result.IsSuccess
-                ? Results.Created($"/api/cartas/{result.Value!.Id}", result.Value)
+                ? Results.Created($"/cartas/{result.Value!.Id}", result.Value)
                 : EndpointResults.BadRequest(result);
         })
             .WithName("CrearCarta")

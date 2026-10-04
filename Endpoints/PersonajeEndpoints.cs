@@ -44,7 +44,7 @@ public static class PersonajeEndpoints
         {
             var result = service.CreatePersonaje(input);
             return result.IsSuccess
-                ? Results.Created($"/api/personajes/{result.Value!.Id}", result.Value)
+                ? Results.Created($"/personajes/{result.Value!.Id}", result.Value)
                 : EndpointResults.BadRequest(result);
         })
             .WithName("CrearPersonaje")

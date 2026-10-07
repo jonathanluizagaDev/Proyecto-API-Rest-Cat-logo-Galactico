@@ -31,6 +31,11 @@ public class CatalogoService
     public Personaje? GetPersonaje(int id) =>
         GalacticData.Personajes.FirstOrDefault(personaje => personaje.Id == id);
 
+    //public ServiceResult<PersonajeConCardResponse> GetPersonajeConCard(int id)
+    //{
+        
+    //}
+
     public ServiceResult<Personaje> CreatePersonaje(PersonajeInput input)
     {
         var error = ValidarPersonaje(input);
@@ -46,7 +51,8 @@ public class CatalogoService
             NormalizarValor(input.Faccion, Facciones),
             input.Afiliacion.Trim(),
             NormalizarValor(input.Estado, Estados),
-            input.FuerzaSensitivo);
+            input.FuerzaSensitivo,
+            input.foto.Trim());
 
         GalacticData.Personajes.Add(personaje);
         return ServiceResult<Personaje>.Ok(personaje);
@@ -82,7 +88,8 @@ public class CatalogoService
             NormalizarValor(input.Faccion, Facciones),
             input.Afiliacion.Trim(),
             estado,
-            input.FuerzaSensitivo);
+            input.FuerzaSensitivo,
+            input.foto.Trim());
 
         GalacticData.Personajes[index] = personajeActualizado;
         return ServiceResult<Personaje>.Ok(personajeActualizado);

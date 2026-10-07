@@ -9,6 +9,7 @@ public static class PersonajeEndpoints
     public static RouteGroupBuilder MapPersonajeEndpoints(this RouteGroupBuilder api)
     {
         var group = api.MapGroup("/personajes").WithTags("Personajes");
+        
 
         group.MapGet("/", (CatalogoService service, string? faccion, bool? fuerzaSensitivo) =>
                 Results.Ok(service.GetPersonajes(faccion, fuerzaSensitivo)))
@@ -97,6 +98,43 @@ public static class PersonajeEndpoints
             .WithSummary("Lista los eventos en los que participa un personaje.")
             .Produces<IEnumerable<Evento>>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
+
+
+        group.MapGet("/{id:int}/con-card", (int id ,CatalogoService service) =>
+        {
+            var personaje = service.GetPersonaje(id);
+            if (personaje is null)
+            {
+                return Results.NotFound( new {error ="El personaje no existe"});
+            }
+
+            var carta = service.GetCartas().FirstOrDefault(c => c.PersonajeId == id );
+
+            return Results.Ok(new
+            {
+               id = personaje.Id,
+               nombre = personaje.Nombre,
+               especie = personaje.Especie,
+               faccion = personaje.Faccion,
+               afiliacion = personaje.Afiliacion,
+               estado = personaje.Estado,
+               fuerzaSentitiva = personaje.FuerzaSensitivo,
+
+               image = carta is null ? null : new
+               {
+                   id = carta.Id,
+                   personajeId = carta.PersonajeId,
+                   poder = carta.Poder,
+                   habilidadEspecial = carta.HabilidadEspecial,
+                   arma = carta.Arma,
+
+                   peligrosidad = carta.NivelPeligrosidad * 10 ,
+                   imagenUrl = carta.ImagenUrl
+
+               }
+
+            });
+        });
 
         return group;
     }

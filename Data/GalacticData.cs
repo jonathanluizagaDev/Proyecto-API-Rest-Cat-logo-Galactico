@@ -13,7 +13,7 @@ public static class GalacticData
             "Rebelde",
             "Alianza Rebelde",
             "vivo",
-            true),
+            true,"https://upload.wikimedia.org/wikipedia/commons/6/67/Luke_Skywalker_-_Welcome_Banner_%28Cropped%29.jpg"),
         new(
             2,
             "Leia Organa",
@@ -21,7 +21,7 @@ public static class GalacticData
             "Rebelde",
             "Alianza Rebelde",
             "vivo",
-            true),
+            true,"https://upload.wikimedia.org/wikipedia/en/1/1b/Princess_Leia%27s_characteristic_hairstyle.jpg"),
         new(
             3,
             "Darth Vader",
@@ -29,7 +29,8 @@ public static class GalacticData
             "Imperio",
             "Imperio Galáctico",
             "muerto",
-            true),
+            true,
+            "https://upload.wikimedia.org/wikipedia/en/0/0b/Darth_Vader_in_The_Empire_Strikes_Back.jpg"),
         new(
             4,
             "Han Solo",
@@ -37,7 +38,7 @@ public static class GalacticData
             "Neutral",
             "Contrabandistas",
             "vivo",
-            false)
+            false,"https://upload.wikimedia.org/wikipedia/en/c/c9/Han_Solo_with_Blaster.jpg")
     ];
 
     public static List<CardPersonaje> Cartas { get; } =

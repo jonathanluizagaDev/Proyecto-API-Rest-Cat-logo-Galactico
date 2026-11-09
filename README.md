@@ -18,16 +18,15 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;
 
 Sustituye los datos ficticios por tu usuario y contraseña reales, **solo en tu equipo**.
 
-Para generar la clave AES de 256 bits puedes ejecutar el comando siguiente en una terminal con Python instalado y COPIAR el valor generado:
+Para generar y guardar una clave AES de 256 bits desde PowerShell:
 
-```bash
-python -c "import secrets,base64;print(base64.b64encode(secrets.token_bytes(32)).decode())"
-```
-
-Después configura el valor que recibiste:
-
-```bash
-dotnet user-secrets set "Cifrado:Clave" "PEGA_AQUI_BASE64_GENERADO"
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+dotnet user-secrets set "Cifrado:Clave" ([Convert]::ToBase64String($bytes))
+$rng.Dispose()
+Remove-Variable bytes,rng
 ```
 
 ## Ejecutar
@@ -35,7 +34,7 @@ dotnet user-secrets set "Cifrado:Clave" "PEGA_AQUI_BASE64_GENERADO"
 ```bash
 dotnet ef migrations list
 dotnet ef database update
-dotnet run
+dotnet run --launch-profile http
 ```
 
 Si recibes un problema de conexión, verifica que MySQL esté iniciado y la base exista. No borres migraciones aplicadas ni compartas claves en capturas.
@@ -59,7 +58,7 @@ Solo se permite simular eventos con exactamente dos facciones, participantes viv
 
 ## Migraciones
 
-El proyecto incluye tres migraciones (`Inicial`, `AgregarSimulaciones` y `ConvertirSimulacionEnHistorial`) y snapshot. En caso de modificar entidades, usa `dotnet ef migrations add NombreDeCambio` para generar una migración adicional. Verifica en MySQL el estado de `__EFMigrationsHistory`.
+El proyecto incluye cuatro migraciones (`Inicial`, `AgregarSimulaciones`, `ConvertirSimulacionEnHistorial` y `SincronizarModelo`) y un snapshot sincronizado. En caso de modificar entidades, usa `dotnet ef migrations add NombreDeCambio` para generar una migración adicional. Verifica en MySQL el estado de `__EFMigrationsHistory`.
 
 ## Demostración de protección
 
@@ -72,4 +71,16 @@ El proyecto incluye tres migraciones (`Inicial`, `AgregarSimulaciones` y `Conver
 
 Realiza commits pequeños verificables, agrega `USO_DE_IA.md` con tus cambios reales y al entregar usa `git tag entrega-final` y `git push origin entrega-final`. Comprueba que no haya secretos en commits pasados.
 
-**Estado:** paquete preparado como base de implementación; debe verificarse compilación, migraciones, endpoints y MySQL en el equipo del estudiante antes de entregar. No sustituye la defensa individual.
+## Estado verificado localmente
+
+Comprobado el 9 de noviembre de 2026 con .NET SDK 10.0.403 y MySQL 8.4.9:
+
+- compilación con 0 errores;
+- cuatro migraciones aplicadas y modelo sin cambios pendientes;
+- CRUD de planetas, personajes, cartas y eventos;
+- respuestas 409 para planeta/carta duplicados y para intentar revivir un personaje fallecido;
+- simulación de batalla, bajas, historial, MVP e invasión con bono defensivo;
+- alta y consulta segura de usuarios, detección de correo duplicado y ausencia de correo/contraseña en texto plano;
+- OpenAPI, Swagger y endpoints principales con respuesta HTTP 200.
+
+La advertencia `NU1900` puede aparecer cuando NuGet no logra consultar temporalmente su servicio de vulnerabilidades; no impide compilar ni ejecutar la API. Los datos creados durante las pruebas permanecen únicamente en la base MySQL local.

@@ -1,51 +1,119 @@
 @base = http://localhost:5080
-### Planeta
+@planetaId = 1
+@personajeRebeldeId = 1
+@personajeImperioId = 2
+@cartaRebeldeId = 1
+@eventoId = 1
+@usuarioId = 1
+
+### OpenAPI
+GET {{base}}/openapi/v1.json
+
+### Crear planeta
 POST {{base}}/api/planetas
 Content-Type: application/json
 
 {"nombre":"Coruscant","sector":"Núcleo","clima":"Templado","nivelPeligro":7}
 
-### Personaje rebelde
+### Consultar planetas
+GET {{base}}/api/planetas
+
+### Actualizar planeta
+PUT {{base}}/api/planetas/{{planetaId}}
+Content-Type: application/json
+
+{"nombre":"Coruscant","sector":"Núcleo","clima":"Templado urbano","nivelPeligro":8}
+
+### Validar planeta duplicado (esperado: 409)
+POST {{base}}/api/planetas
+Content-Type: application/json
+
+{"nombre":"Coruscant","sector":"Otro","clima":"Seco","nivelPeligro":3}
+
+### Crear personaje rebelde
 POST {{base}}/api/personajes
 Content-Type: application/json
 
 {"nombre":"Leia","especie":"Humana","faccion":"Rebelde","afiliacion":"Alianza","estado":"vivo","fuerzaSensitivo":true}
 
-### Personaje imperio
+### Crear personaje imperial
 POST {{base}}/api/personajes
 Content-Type: application/json
 
 {"nombre":"Vader","especie":"Humana","faccion":"Imperio","afiliacion":"Imperio","estado":"vivo","fuerzaSensitivo":true}
 
-### Carta rebelde
+### Actualizar personaje
+PUT {{base}}/api/personajes/{{personajeRebeldeId}}
+Content-Type: application/json
+
+{"nombre":"Leia Organa","especie":"Humana","faccion":"Rebelde","afiliacion":"Alianza Rebelde","estado":"vivo","fuerzaSensitivo":true}
+
+### Crear carta rebelde
 POST {{base}}/api/cartas
 Content-Type: application/json
 
-{"personajeId":1,"poder":75,"habilidadEspecial":"Estrategia","arma":"Bláster","nivelPeligrosidad":7,"imagenUrl":"https://example.com/leia.jpg"}
+{"personajeId":{{personajeRebeldeId}},"poder":75,"habilidadEspecial":"Estrategia","arma":"Bláster","nivelPeligrosidad":7,"imagenUrl":"https://example.com/leia.jpg"}
 
-### Carta imperio
+### Crear carta imperial
 POST {{base}}/api/cartas
 Content-Type: application/json
 
-{"personajeId":2,"poder":90,"habilidadEspecial":"Fuerza","arma":"Sable","nivelPeligrosidad":9,"imagenUrl":"https://example.com/vader.jpg"}
+{"personajeId":{{personajeImperioId}},"poder":90,"habilidadEspecial":"Fuerza","arma":"Sable","nivelPeligrosidad":9,"imagenUrl":"https://example.com/vader.jpg"}
 
-### Evento
+### Validar segunda carta para el mismo personaje (esperado: 409)
+POST {{base}}/api/cartas
+Content-Type: application/json
+
+{"personajeId":{{personajeRebeldeId}},"poder":50,"habilidadEspecial":"Duplicada","arma":"Bláster","nivelPeligrosidad":5,"imagenUrl":"https://example.com/duplicada.jpg"}
+
+### Ranking
+GET {{base}}/api/personajes/ranking
+
+### Crear evento
 POST {{base}}/api/eventos
 Content-Type: application/json
 
-{"nombre":"Batalla de prueba","fecha":2026,"descripcion":"Prueba de combate","planetaId":1,"participanteIds":[1,2]}
+{"nombre":"Batalla de prueba","fecha":2026,"descripcion":"Prueba de combate","planetaId":{{planetaId}},"participanteIds":[{{personajeRebeldeId}},{{personajeImperioId}}]}
 
-### Simular y consultar
-POST {{base}}/api/eventos/1/simular
+### Actualizar evento antes de simular
+PUT {{base}}/api/eventos/{{eventoId}}
+Content-Type: application/json
 
-###
-GET {{base}}/api/eventos/1/resultado
+{"nombre":"Batalla actualizada","fecha":2027,"descripcion":"Prueba actualizada","planetaId":{{planetaId}},"participanteIds":[{{personajeRebeldeId}},{{personajeImperioId}}]}
 
-### Historial del evento
-GET {{base}}/api/eventos/1/historial
+### Consultar MVP
+GET {{base}}/api/eventos/{{eventoId}}/mvp
 
-### Usuario (datos ficticios)
+### Simular batalla
+POST {{base}}/api/eventos/{{eventoId}}/simular
+
+### Consultar último resultado
+GET {{base}}/api/eventos/{{eventoId}}/resultado
+
+### Consultar historial
+GET {{base}}/api/eventos/{{eventoId}}/historial
+
+### Consultar estadísticas del planeta
+GET {{base}}/api/planetas/{{planetaId}}/estadisticas
+
+### Crear usuario con datos ficticios
 POST {{base}}/api/usuarios
 Content-Type: application/json
 
 {"nombre":"Ejemplo","correo":"ejemplo@correo.test","contrasena":"ClaveEjemplo123"}
+
+### Consultar usuario (no debe devolver contraseña ni hashes)
+GET {{base}}/api/usuarios/{{usuarioId}}
+
+### Validar correo duplicado sin importar mayúsculas (esperado: 409)
+POST {{base}}/api/usuarios
+Content-Type: application/json
+
+{"nombre":"Duplicado","correo":"EJEMPLO@CORREO.TEST","contrasena":"OtraClave123"}
+
+### Eliminar carta independiente (ajusta el ID a un registro sin simulaciones)
+DELETE {{base}}/api/cartas/{{cartaRebeldeId}}
+
+### Nota
+# Para repetir el flujo completo con una base usada, actualiza los ID de la cabecera
+# o utiliza nombres/correos distintos para evitar las validaciones de duplicados.

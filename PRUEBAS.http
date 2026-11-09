@@ -1,0 +1,51 @@
+@base = http://localhost:5080
+### Planeta
+POST {{base}}/api/planetas
+Content-Type: application/json
+
+{"nombre":"Coruscant","sector":"Núcleo","clima":"Templado","nivelPeligro":7}
+
+### Personaje rebelde
+POST {{base}}/api/personajes
+Content-Type: application/json
+
+{"nombre":"Leia","especie":"Humana","faccion":"Rebelde","afiliacion":"Alianza","estado":"vivo","fuerzaSensitivo":true}
+
+### Personaje imperio
+POST {{base}}/api/personajes
+Content-Type: application/json
+
+{"nombre":"Vader","especie":"Humana","faccion":"Imperio","afiliacion":"Imperio","estado":"vivo","fuerzaSensitivo":true}
+
+### Carta rebelde
+POST {{base}}/api/cartas
+Content-Type: application/json
+
+{"personajeId":1,"poder":75,"habilidadEspecial":"Estrategia","arma":"Bláster","nivelPeligrosidad":7,"imagenUrl":"https://example.com/leia.jpg"}
+
+### Carta imperio
+POST {{base}}/api/cartas
+Content-Type: application/json
+
+{"personajeId":2,"poder":90,"habilidadEspecial":"Fuerza","arma":"Sable","nivelPeligrosidad":9,"imagenUrl":"https://example.com/vader.jpg"}
+
+### Evento
+POST {{base}}/api/eventos
+Content-Type: application/json
+
+{"nombre":"Batalla de prueba","fecha":2026,"descripcion":"Prueba de combate","planetaId":1,"participanteIds":[1,2]}
+
+### Simular y consultar
+POST {{base}}/api/eventos/1/simular
+
+###
+GET {{base}}/api/eventos/1/resultado
+
+### Historial del evento
+GET {{base}}/api/eventos/1/historial
+
+### Usuario (datos ficticios)
+POST {{base}}/api/usuarios
+Content-Type: application/json
+
+{"nombre":"Ejemplo","correo":"ejemplo@correo.test","contrasena":"ClaveEjemplo123"}

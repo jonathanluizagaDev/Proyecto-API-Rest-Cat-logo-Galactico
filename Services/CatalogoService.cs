@@ -1,483 +1,287 @@
-using ProyectoCatalogoGalactico.Data;
-using ProyectoCatalogoGalactico.Dtos;
-using ProyectoCatalogoGalactico.Models;
-
-namespace ProyectoCatalogoGalactico.Services;
-
-public class CatalogoService
+using CatalogoGalacticoWebApi.Data;
+using CatalogoGalacticoWebApi.Dtos;
+using CatalogoGalacticoWebApi.Models;
+using Microsoft.EntityFrameworkCore;
+namespace CatalogoGalacticoWebApi.Services;
+public class CatalogoService(AppDbContext db) : ICatalogoService
 {
     private static readonly string[] Facciones = ["Rebelde", "Imperio", "Neutral"];
     private static readonly string[] Estados = ["vivo", "muerto", "desconocido"];
-
-    public IEnumerable<Personaje> GetPersonajes(string? faccion, bool? fuerzaSensitivo)
+    private static string? Limpiar(string? s) => s?.Trim();
+    private static string? Opcion(string? s, string[] validas) => validas.FirstOrDefault(
+        x => x.Equals(Limpiar(s), StringComparison.OrdinalIgnoreCase));
+    private static string? ValidarPersonaje(PersonajeInput d) =>
+        string.IsNullOrWhiteSpace(d.Nombre) || string.IsNullOrWhiteSpace(d.Especie) || string.IsNullOrWhiteSpace(d.Afiliacion)
+            ? "Nombre, especie y afiliación son obligatorios."
+        : Opcion(d.Faccion, Facciones) is null ? "Facción: Rebelde, Imperio o Neutral."
+        : Opcion(d.Estado, Estados) is null    ? "Estado: vivo, muerto o desconocido."
+                                               : null;
+    private static void Actualizar(Personaje p, PersonajeInput d)
     {
-        IEnumerable<Personaje> personajes = GalacticData.Personajes;
-
+        p.Nombre = d.Nombre.Trim();
+        p.Especie = d.Especie.Trim();
+        p.Faccion = Opcion(d.Faccion, Facciones)!;
+        p.Afiliacion = d.Afiliacion.Trim();
+        p.Estado = Opcion(d.Estado, Estados)!;
+        p.FuerzaSensitivo = d.FuerzaSensitivo;
+    }
+    public Task<List<Personaje>> Personajes(string? faccion, bool? fuerzaSensitivo)
+    {
+        var q = db.Personajes.AsNoTracking().AsQueryable();
         if (!string.IsNullOrWhiteSpace(faccion))
-        {
-            personajes = personajes.Where(personaje =>
-                personaje.Faccion.Equals(faccion.Trim(), StringComparison.OrdinalIgnoreCase));
-        }
-
+            q = q.Where(x => x.Faccion == faccion.Trim());
         if (fuerzaSensitivo.HasValue)
-        {
-            personajes = personajes.Where(personaje =>
-                personaje.FuerzaSensitivo == fuerzaSensitivo.Value);
-        }
-
-        return personajes;
+            q = q.Where(x => x.FuerzaSensitivo == fuerzaSensitivo.Value);
+        return q.OrderBy(x => x.Id).ToListAsync();
     }
-
-    public Personaje? GetPersonaje(int id) =>
-        GalacticData.Personajes.FirstOrDefault(personaje => personaje.Id == id);
-
-    public ServiceResult<Personaje> CreatePersonaje(PersonajeInput input)
+    public Task<Personaje?> Personaje(int id) => db.Personajes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+    public async Task<Resultado<Personaje>> CrearPersonaje(PersonajeInput d)
     {
-        var error = ValidarPersonaje(input);
-        if (error is not null)
-        {
-            return ServiceResult<Personaje>.Fail(error);
-        }
-
-        var personaje = new Personaje(
-            GalacticData.NextId(GalacticData.Personajes, item => item.Id),
-            input.Nombre.Trim(),
-            input.Especie.Trim(),
-            NormalizarValor(input.Faccion, Facciones),
-            input.Afiliacion.Trim(),
-            NormalizarValor(input.Estado, Estados),
-            input.FuerzaSensitivo);
-
-        GalacticData.Personajes.Add(personaje);
-        return ServiceResult<Personaje>.Ok(personaje);
+        var e = ValidarPersonaje(d);
+        if (e != null)
+            return Resultado<Personaje>.Fail(e);
+        var p = new Personaje();
+        Actualizar(p, d);
+        db.Personajes.Add(p);
+        await db.SaveChangesAsync();
+        return Resultado<Personaje>.Ok(p, 201);
     }
-
-    public ServiceResult<Personaje> UpdatePersonaje(int id, PersonajeInput input)
+    public async Task<Resultado<Personaje>> EditarPersonaje(int id, PersonajeInput d)
     {
-        var index = GalacticData.Personajes.FindIndex(personaje => personaje.Id == id);
-        if (index < 0)
-        {
-            return ServiceResult<Personaje>.Fail("El personaje no existe.");
-        }
-
-        var error = ValidarPersonaje(input);
-        if (error is not null)
-        {
-            return ServiceResult<Personaje>.Fail(error);
-        }
-
-        var estado = NormalizarValor(input.Estado, Estados);
-        var tieneMuerteRegistrada = GalacticData.Eventos.Any(evento => evento.FallecidoIds.Contains(id));
-
-        if (tieneMuerteRegistrada && estado != "muerto")
-        {
-            return ServiceResult<Personaje>.Fail(
-                "El personaje tiene una muerte registrada y debe conservar el estado muerto.");
-        }
-
-        var personajeActualizado = new Personaje(
-            id,
-            input.Nombre.Trim(),
-            input.Especie.Trim(),
-            NormalizarValor(input.Faccion, Facciones),
-            input.Afiliacion.Trim(),
-            estado,
-            input.FuerzaSensitivo);
-
-        GalacticData.Personajes[index] = personajeActualizado;
-        return ServiceResult<Personaje>.Ok(personajeActualizado);
+        var p = await db.Personajes.FindAsync(id);
+        if (p == null)
+            return Resultado<Personaje>.Fail("Personaje no encontrado", 404);
+        var e = ValidarPersonaje(d);
+        if (e != null)
+            return Resultado<Personaje>.Fail(e);
+        if (p.Estado == "muerto" && Opcion(d.Estado, Estados) != "muerto")
+            return Resultado<Personaje>.Fail("Un personaje fallecido no puede volver a la vida.", 409);
+        Actualizar(p, d);
+        await db.SaveChangesAsync();
+        return Resultado<Personaje>.Ok(p);
     }
-
-    public ServiceResult<bool> DeletePersonaje(int id)
+    public async Task<Resultado<bool>> EliminarPersonaje(int id)
     {
-        var personaje = GetPersonaje(id);
-        if (personaje is null)
-        {
-            return ServiceResult<bool>.Fail("El personaje no existe.");
-        }
-
-        var tieneCarta = GalacticData.Cartas.Any(carta => carta.PersonajeId == id);
-        var participaEnEventos = GalacticData.Eventos.Any(evento => evento.ParticipanteIds.Contains(id));
-
-        if (tieneCarta || participaEnEventos)
-        {
-            return ServiceResult<bool>.Fail(
-                "No se puede eliminar el personaje porque tiene cartas o eventos relacionados.");
-        }
-
-        GalacticData.Personajes.Remove(personaje);
-        return ServiceResult<bool>.Ok(true);
+        var p = await db.Personajes.FindAsync(id);
+        if (p == null)
+            return Resultado<bool>.Fail("No existe", 404);
+        if (await db.Cartas.AnyAsync(x => x.PersonajeId == id) || await db.Participaciones.AnyAsync(x => x.PersonajeId == id))
+            return Resultado<bool>.Fail("Tiene relaciones asociadas", 409);
+        db.Personajes.Remove(p);
+        await db.SaveChangesAsync();
+        return Resultado<bool>.Ok(true, 204);
     }
-
-    public IEnumerable<Evento> GetEventosDePersonaje(int personajeId) =>
-        GalacticData.Eventos.Where(evento => evento.ParticipanteIds.Contains(personajeId));
-
-    public IEnumerable<PersonajeRankingResponse> GetRankingPorPoder() =>
-        (from personaje in GalacticData.Personajes
-         join carta in GalacticData.Cartas on personaje.Id equals carta.PersonajeId
-         orderby carta.Poder descending, personaje.Nombre
-         select new { personaje, carta })
-        .Select((item, posicion) => new PersonajeRankingResponse(
-            posicion + 1,
-            item.personaje.Id,
-            item.personaje.Nombre,
-            item.carta.Poder));
-
-    public IEnumerable<CardPersonaje> GetCartas() => GalacticData.Cartas;
-
-    public CardPersonaje? GetCarta(int id) =>
-        GalacticData.Cartas.FirstOrDefault(carta => carta.Id == id);
-
-    public ServiceResult<CardPersonaje> CreateCarta(CardPersonajeInput input)
+    public async Task<List<RankingResponse>> Ranking()
     {
-        var error = ValidarCarta(input);
-        if (error is not null)
-        {
-            return ServiceResult<CardPersonaje>.Fail(error);
-        }
-
-        var carta = new CardPersonaje(
-            GalacticData.NextId(GalacticData.Cartas, item => item.Id),
-            input.PersonajeId,
-            input.Poder,
-            input.HabilidadEspecial.Trim(),
-            input.Arma.Trim(),
-            input.NivelPeligrosidad,
-            input.ImagenUrl.Trim());
-
-        GalacticData.Cartas.Add(carta);
-        return ServiceResult<CardPersonaje>.Ok(carta);
+        var datos = await db.Cartas.Include(x => x.Personaje)
+                        .AsNoTracking()
+                        .OrderByDescending(x => x.Poder)
+                        .ThenBy(x => x.Personaje.Nombre)
+                        .ToListAsync();
+        return datos.Select((x, i) => new RankingResponse(i + 1, x.PersonajeId, x.Personaje.Nombre, x.Poder)).ToList();
     }
-
-    public ServiceResult<CardPersonaje> UpdateCarta(int id, CardPersonajeInput input)
+    public Task<List<Evento>> EventosPersonaje(
+        int id) => db.Participaciones.AsNoTracking().Where(x => x.PersonajeId == id).Select(x => x.Evento).ToListAsync();
+    public Task<List<Carta>> Cartas() => db.Cartas.AsNoTracking().ToListAsync();
+    public Task<Carta?> Carta(int id) => db.Cartas.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+    private async Task<string?> ValidarCarta(CartaInput d, int? id = null)
     {
-        var index = GalacticData.Cartas.FindIndex(carta => carta.Id == id);
-        if (index < 0)
-        {
-            return ServiceResult<CardPersonaje>.Fail("La carta no existe.");
-        }
-
-        var error = ValidarCarta(input, id);
-        if (error is not null)
-        {
-            return ServiceResult<CardPersonaje>.Fail(error);
-        }
-
-        var cartaActualizada = new CardPersonaje(
-            id,
-            input.PersonajeId,
-            input.Poder,
-            input.HabilidadEspecial.Trim(),
-            input.Arma.Trim(),
-            input.NivelPeligrosidad,
-            input.ImagenUrl.Trim());
-
-        GalacticData.Cartas[index] = cartaActualizada;
-        return ServiceResult<CardPersonaje>.Ok(cartaActualizada);
-    }
-
-    public IEnumerable<Evento> GetEventos() => GalacticData.Eventos;
-
-    public Evento? GetEvento(int id) =>
-        GalacticData.Eventos.FirstOrDefault(evento => evento.Id == id);
-
-    public ServiceResult<Evento> CreateEvento(EventoInput input)
-    {
-        var error = ValidarEvento(input);
-        if (error is not null)
-        {
-            return ServiceResult<Evento>.Fail(error);
-        }
-
-        var evento = new Evento(
-            GalacticData.NextId(GalacticData.Eventos, item => item.Id),
-            input.Nombre.Trim(),
-            input.Fecha,
-            input.Ubicacion.Trim(),
-            input.Descripcion.Trim(),
-            [.. input.ParticipanteIds.Distinct()],
-            [.. input.FallecidoIds.Distinct()],
-            null,
-            null);
-
-        GalacticData.Eventos.Add(evento);
-        AplicarFallecimientos(evento.FallecidoIds);
-
-        return ServiceResult<Evento>.Ok(evento);
-    }
-
-    public ServiceResult<Evento> UpdateEvento(int id, EventoInput input)
-    {
-        var index = GalacticData.Eventos.FindIndex(evento => evento.Id == id);
-        if (index < 0)
-        {
-            return ServiceResult<Evento>.Fail("El evento no existe.");
-        }
-
-        var error = ValidarEvento(input, id);
-        if (error is not null)
-        {
-            return ServiceResult<Evento>.Fail(error);
-        }
-
-        var eventoActualizado = new Evento(
-            id,
-            input.Nombre.Trim(),
-            input.Fecha,
-            input.Ubicacion.Trim(),
-            input.Descripcion.Trim(),
-            [.. input.ParticipanteIds.Distinct()],
-            [.. input.FallecidoIds.Distinct()],
-            null,
-            null);
-
-        GalacticData.Eventos[index] = eventoActualizado;
-        AplicarFallecimientos(eventoActualizado.FallecidoIds);
-
-        return ServiceResult<Evento>.Ok(eventoActualizado);
-    }
-
-    public ServiceResult<MvpResponse> GetMvp(int eventoId)
-    {
-        var evento = GetEvento(eventoId);
-        if (evento is null)
-        {
-            return ServiceResult<MvpResponse>.Fail("El evento no existe.");
-        }
-
-        var carta = GalacticData.Cartas
-            .Where(item => evento.ParticipanteIds.Contains(item.PersonajeId))
-            .MaxBy(item => item.Poder);
-
-        if (carta is null)
-        {
-            return ServiceResult<MvpResponse>.Fail("Ningún participante tiene una carta.");
-        }
-
-        var personaje = GetPersonaje(carta.PersonajeId)!;
-        return ServiceResult<MvpResponse>.Ok(new MvpResponse(personaje, carta));
-    }
-
-    public ServiceResult<SimulacionResponse> SimularBatalla(int eventoId)
-    {
-        var evento = GetEvento(eventoId);
-        if (evento is null)
-        {
-            return ServiceResult<SimulacionResponse>.Fail("El evento no existe.");
-        }
-
-        if (evento.ParticipanteIds.Count < 2)
-        {
-            return ServiceResult<SimulacionResponse>.Fail(
-                "El evento necesita al menos dos participantes para simular una batalla.");
-        }
-
-        var participantes = GalacticData.Personajes
-            .Where(personaje => evento.ParticipanteIds.Contains(personaje.Id))
-            .ToList();
-
-        if (participantes.Count != evento.ParticipanteIds.Count)
-        {
-            return ServiceResult<SimulacionResponse>.Fail(
-                "Uno o más participantes del evento ya no existen.");
-        }
-
-        var cartas = GalacticData.Cartas
-            .Where(carta => evento.ParticipanteIds.Contains(carta.PersonajeId))
-            .ToList();
-
-        if (cartas.Count != participantes.Count)
-        {
-            return ServiceResult<SimulacionResponse>.Fail(
-                "Todos los participantes deben tener una carta para simular la batalla.");
-        }
-
-        var cartasPorPersonaje = cartas.ToDictionary(carta => carta.PersonajeId);
-        var random = new Random(unchecked(evento.Id * 397 ^ evento.Fecha));
-
-        var totales = participantes
-            .GroupBy(personaje => personaje.Faccion)
-            .Select(grupo =>
-            {
-                var poderBase = grupo.Sum(personaje => cartasPorPersonaje[personaje.Id].Poder);
-                var factor = Math.Round(0.90 + random.NextDouble() * 0.20, 2);
-                var poderFinal = Math.Round(poderBase * factor, 2);
-
-                return new TotalFaccionResponse(grupo.Key, poderBase, factor, poderFinal);
-            })
-            .OrderByDescending(total => total.PoderFinal)
-            .ToList();
-
-        if (totales.Count < 2)
-        {
-            return ServiceResult<SimulacionResponse>.Fail(
-                "La batalla requiere participantes de al menos dos facciones.");
-        }
-
-        var hayEmpate = Math.Abs(totales[0].PoderFinal - totales[1].PoderFinal) < 0.001;
-        var ganador = hayEmpate ? "Empate" : totales[0].Faccion;
-        const string criterio =
-            "Suma del poder de las cartas por facción, ajustada por un factor entre 0.90 y 1.10.";
-
-        var index = GalacticData.Eventos.FindIndex(item => item.Id == eventoId);
-        GalacticData.Eventos[index] = evento with
-        {
-            Resultado = hayEmpate ? "La batalla terminó en empate." : $"Victoria de la facción {ganador}.",
-            Ganador = ganador
-        };
-
-        return ServiceResult<SimulacionResponse>.Ok(
-            new SimulacionResponse(eventoId, ganador, criterio, totales));
-    }
-
-    private static string? ValidarPersonaje(PersonajeInput input)
-    {
-        if (string.IsNullOrWhiteSpace(input.Nombre))
-        {
-            return "El nombre es obligatorio.";
-        }
-
-        if (string.IsNullOrWhiteSpace(input.Especie))
-        {
-            return "La especie es obligatoria.";
-        }
-
-        if (string.IsNullOrWhiteSpace(input.Afiliacion))
-        {
-            return "La afiliación es obligatoria.";
-        }
-
-        if (!ContieneValor(Facciones, input.Faccion))
-        {
-            return "La facción debe ser Rebelde, Imperio o Neutral.";
-        }
-
-        if (!ContieneValor(Estados, input.Estado))
-        {
-            return "El estado debe ser vivo, muerto o desconocido.";
-        }
-
+        if (!await db.Personajes.AnyAsync(x => x.Id == d.PersonajeId))
+            return "Personaje no encontrado";
+        if (await db.Cartas.AnyAsync(x => x.PersonajeId == d.PersonajeId && x.Id != id))
+            return "Personaje ya tiene carta";
+        if (d.Poder < 0 || d.Poder > 100 || d.NivelPeligrosidad < 1 || d.NivelPeligrosidad > 10)
+            return "Poder 0-100 y peligrosidad 1-10";
+        if (string.IsNullOrWhiteSpace(d.Arma) || string.IsNullOrWhiteSpace(d.HabilidadEspecial))
+            return "Arma y habilidad obligatorias";
+        if (!Uri.TryCreate(d.ImagenUrl, UriKind.Absolute, out var u) || (u.Scheme != "http" && u.Scheme != "https"))
+            return "ImagenUrl debe ser HTTP(S)";
         return null;
     }
-
-    private static string? ValidarCarta(CardPersonajeInput input, int? cartaId = null)
+    private static void Actualizar(Carta c, CartaInput d)
     {
-        if (GalacticData.Personajes.All(personaje => personaje.Id != input.PersonajeId))
-        {
-            return "El personaje indicado no existe.";
-        }
-
-        if (GalacticData.Cartas.Any(carta =>
-                carta.PersonajeId == input.PersonajeId && carta.Id != cartaId))
-        {
-            return "El personaje ya tiene una carta principal.";
-        }
-
-        if (input.Poder is < 0 or > 100)
-        {
-            return "El poder debe estar entre 0 y 100.";
-        }
-
-        if (input.NivelPeligrosidad is < 1 or > 10)
-        {
-            return "El nivel de peligrosidad debe estar entre 1 y 10.";
-        }
-
-        if (string.IsNullOrWhiteSpace(input.HabilidadEspecial) || string.IsNullOrWhiteSpace(input.Arma))
-        {
-            return "La habilidad especial y el arma son obligatorias.";
-        }
-
-        if (!Uri.TryCreate(input.ImagenUrl, UriKind.Absolute, out var imagenUri) ||
-            (imagenUri.Scheme != Uri.UriSchemeHttp && imagenUri.Scheme != Uri.UriSchemeHttps))
-        {
-            return "La URL de la imagen debe ser una dirección HTTP o HTTPS válida.";
-        }
-
+        c.PersonajeId = d.PersonajeId;
+        c.Poder = d.Poder;
+        c.HabilidadEspecial = d.HabilidadEspecial.Trim();
+        c.Arma = d.Arma.Trim();
+        c.NivelPeligrosidad = d.NivelPeligrosidad;
+        c.ImagenUrl = d.ImagenUrl.Trim();
+    }
+    public async Task<Resultado<Carta>> CrearCarta(CartaInput d)
+    {
+        var e = await ValidarCarta(d);
+        if (e != null)
+            return Resultado<Carta>.Fail(e, e.Contains("ya tiene") ? 409 : 400);
+        var c = new Carta();
+        Actualizar(c, d);
+        db.Cartas.Add(c);
+        await db.SaveChangesAsync();
+        return Resultado<Carta>.Ok(c, 201);
+    }
+    public async Task<Resultado<Carta>> EditarCarta(int id, CartaInput d)
+    {
+        var c = await db.Cartas.FindAsync(id);
+        if (c == null)
+            return Resultado<Carta>.Fail("Carta no encontrada", 404);
+        if (await db.Participaciones.AnyAsync(x => x.PersonajeId == c.PersonajeId && x.Evento.Simulaciones.Any()))
+            return Resultado<Carta>.Fail("Carta usada en un evento simulado", 409);
+        var e = await ValidarCarta(d, id);
+        if (e != null)
+            return Resultado<Carta>.Fail(e, e.Contains("ya tiene") ? 409 : 400);
+        Actualizar(c, d);
+        await db.SaveChangesAsync();
+        return Resultado<Carta>.Ok(c);
+    }
+    public async Task<Resultado<bool>> EliminarCarta(int id)
+    {
+        var c = await db.Cartas.FindAsync(id);
+        if (c == null)
+            return Resultado<bool>.Fail("Carta no encontrada", 404);
+        if (await db.Participaciones.AnyAsync(x => x.PersonajeId == c.PersonajeId && x.Evento.Simulaciones.Any()))
+            return Resultado<bool>.Fail("Carta usada en simulación", 409);
+        db.Cartas.Remove(c);
+        await db.SaveChangesAsync();
+        return Resultado<bool>.Ok(true, 204);
+    }
+    public Task<List<Planeta>> Planetas(string? sector)
+    {
+        var q = db.Planetas.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(sector))
+            q = q.Where(x => x.Sector == sector.Trim());
+        return q.OrderBy(x => x.Nombre).ToListAsync();
+    }
+    public Task<Planeta?> Planeta(int id) => db.Planetas.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+    private static string? ValidarPlaneta(
+        PlanetaInput d) => string.IsNullOrWhiteSpace(d.Nombre) || string.IsNullOrWhiteSpace(d.Sector) || string.IsNullOrWhiteSpace(d.Clima)
+                               ? "Nombre, sector y clima obligatorios"
+                           : d.NivelPeligro is < 1 or > 10 ? "Nivel de peligro de 1 a 10"
+                                                           : null;
+    private static void Actualizar(Planeta p, PlanetaInput d)
+    {
+        p.Nombre = d.Nombre.Trim();
+        p.Sector = d.Sector.Trim();
+        p.Clima = d.Clima.Trim();
+        p.NivelPeligro = d.NivelPeligro;
+    }
+    public async Task<Resultado<Planeta>> CrearPlaneta(PlanetaInput d)
+    {
+        var e = ValidarPlaneta(d);
+        if (e != null)
+            return Resultado<Planeta>.Fail(e);
+        if (await db.Planetas.AnyAsync(x => x.Nombre == d.Nombre.Trim()))
+            return Resultado<Planeta>.Fail("Planeta duplicado", 409);
+        var p = new Planeta();
+        Actualizar(p, d);
+        db.Planetas.Add(p);
+        await db.SaveChangesAsync();
+        return Resultado<Planeta>.Ok(p, 201);
+    }
+    public async Task<Resultado<Planeta>> EditarPlaneta(int id, PlanetaInput d)
+    {
+        var p = await db.Planetas.FindAsync(id);
+        if (p == null)
+            return Resultado<Planeta>.Fail("Planeta no encontrado", 404);
+        var e = ValidarPlaneta(d);
+        if (e != null)
+            return Resultado<Planeta>.Fail(e);
+        if (await db.Planetas.AnyAsync(x => x.Nombre == d.Nombre.Trim() && x.Id != id))
+            return Resultado<Planeta>.Fail("Planeta duplicado", 409);
+        Actualizar(p, d);
+        await db.SaveChangesAsync();
+        return Resultado<Planeta>.Ok(p);
+    }
+    public async Task<Resultado<bool>> EliminarPlaneta(int id)
+    {
+        var p = await db.Planetas.FindAsync(id);
+        if (p == null)
+            return Resultado<bool>.Fail("Planeta no encontrado", 404);
+        if (await db.Eventos.AnyAsync(x => x.PlanetaId == id))
+            return Resultado<bool>.Fail("Planeta con eventos", 409);
+        db.Planetas.Remove(p);
+        await db.SaveChangesAsync();
+        return Resultado<bool>.Ok(true, 204);
+    }
+    public Task<List<Evento>> EventosPlaneta(
+        int id) => db.Eventos.AsNoTracking().Where(x => x.PlanetaId == id).OrderBy(x => x.Fecha).ToListAsync();
+    public async Task<List<object>> ActividadPlanetas()
+    {
+        var datos = await db.Planetas.AsNoTracking()
+                        .Select(p => new { p.Id, p.Nombre, TotalEventos = p.Eventos.Count })
+                        .OrderByDescending(p => p.TotalEventos)
+                        .ToListAsync();
+        return datos.Select(x => (object)x).ToList();
+    }
+    public Task<List<Evento>> Eventos() => db.Eventos.AsNoTracking().Include(x => x.Participaciones).OrderBy(x => x.Id).ToListAsync();
+    public Task<Evento?> Evento(int id) => db.Eventos.AsNoTracking().Include(x => x.Participaciones).FirstOrDefaultAsync(x => x.Id == id);
+    private async Task<string?> ValidarEvento(EventoInput d, int? eventoId = null)
+    {
+        if (string.IsNullOrWhiteSpace(d.Nombre) || string.IsNullOrWhiteSpace(d.Descripcion))
+            return "Nombre y descripción obligatorios";
+        if (!await db.Planetas.AnyAsync(x => x.Id == d.PlanetaId))
+            return "Planeta no existe";
+        if (d.ParticipanteIds == null || d.ParticipanteIds.Count < 2 || d.ParticipanteIds.Count != d.ParticipanteIds.Distinct().Count())
+            return "Se requieren al menos 2 participantes únicos";
+        var p = await db.Personajes.Where(x => d.ParticipanteIds.Contains(x.Id)).ToListAsync();
+        if (p.Count != d.ParticipanteIds.Count)
+            return "Hay personajes inexistentes";
+        if (p.Any(x => x.Estado == "muerto"))
+            return "No pueden participar personajes muertos";
+        if (p.Select(x => x.Faccion).Distinct().Count() < 2)
+            return "Se requieren al menos dos facciones";
         return null;
     }
-
-    private static string? ValidarEvento(EventoInput input, int? eventoId = null)
+    public async Task<Resultado<Evento>> CrearEvento(EventoInput d)
     {
-        if (string.IsNullOrWhiteSpace(input.Nombre) ||
-            string.IsNullOrWhiteSpace(input.Ubicacion) ||
-            string.IsNullOrWhiteSpace(input.Descripcion))
-        {
-            return "El nombre, la ubicación y la descripción son obligatorios.";
-        }
-
-        if (input.ParticipanteIds is null || input.FallecidoIds is null)
-        {
-            return "Las listas de participantes y fallecidos son obligatorias.";
-        }
-
-        if (input.ParticipanteIds.Count != input.ParticipanteIds.Distinct().Count())
-        {
-            return "La lista de participantes contiene identificadores repetidos.";
-        }
-
-        if (input.FallecidoIds.Count != input.FallecidoIds.Distinct().Count())
-        {
-            return "La lista de fallecidos contiene identificadores repetidos.";
-        }
-
-        if (input.ParticipanteIds.Any(id => GalacticData.Personajes.All(personaje => personaje.Id != id)))
-        {
-            return "Uno o más participantes no existen.";
-        }
-
-        if (input.FallecidoIds.Any(id => !input.ParticipanteIds.Contains(id)))
-        {
-            return "Todo personaje fallecido debe ser participante del evento.";
-        }
-
-        foreach (var personajeId in input.ParticipanteIds)
-        {
-            var fechaMuerteAnterior = GalacticData.Eventos
-                .Where(evento => evento.Id != eventoId && evento.FallecidoIds.Contains(personajeId))
-                .Select(evento => (int?)evento.Fecha)
-                .Min();
-
-            if (fechaMuerteAnterior.HasValue && input.Fecha > fechaMuerteAnterior.Value)
-            {
-                return $"El personaje {personajeId} no puede participar después de su muerte " +
-                       $"registrada en el año {fechaMuerteAnterior.Value}.";
-            }
-        }
-
-        foreach (var personajeId in input.FallecidoIds)
-        {
-            var muerteYaRegistrada = GalacticData.Eventos.Any(evento =>
-                evento.Id != eventoId && evento.FallecidoIds.Contains(personajeId));
-
-            if (muerteYaRegistrada)
-            {
-                return $"El personaje {personajeId} ya tiene una muerte registrada en otro evento.";
-            }
-        }
-
-        return null;
+        var e = await ValidarEvento(d);
+        if (e != null)
+            return Resultado<Evento>.Fail(e);
+        var ev = new Evento { Nombre = d.Nombre.Trim(),
+            Fecha = d.Fecha,
+            Descripcion = d.Descripcion.Trim(),
+            PlanetaId = d.PlanetaId,
+            Participaciones = d.ParticipanteIds.Select(id => new Participacion { PersonajeId = id }).ToList() };
+        db.Eventos.Add(ev);
+        await db.SaveChangesAsync();
+        return Resultado<Evento>.Ok(await Evento(ev.Id) ?? ev, 201);
     }
-
-    private static void AplicarFallecimientos(IEnumerable<int> fallecidoIds)
+    public async Task<Resultado<Evento>> EditarEvento(int id, EventoInput d)
     {
-        foreach (var personajeId in fallecidoIds)
+        var ev = await db.Eventos.Include(x => x.Participaciones).Include(x => x.Simulaciones).FirstOrDefaultAsync(x => x.Id == id);
+        if (ev == null)
+            return Resultado<Evento>.Fail("Evento no existe", 404);
+        if (ev.Simulaciones.Count > 0)
+            return Resultado<Evento>.Fail("Evento ya simulado", 409);
+        var e = await ValidarEvento(d, id);
+        if (e != null)
+            return Resultado<Evento>.Fail(e);
+        ev.Nombre = d.Nombre.Trim();
+        ev.Fecha = d.Fecha;
+        ev.Descripcion = d.Descripcion.Trim();
+        ev.PlanetaId = d.PlanetaId;
+        var viejos = ev.Participaciones.Where(x => !d.ParticipanteIds.Contains(x.PersonajeId)).ToList();
+        foreach (var anterior in viejos)
         {
-            var index = GalacticData.Personajes.FindIndex(personaje => personaje.Id == personajeId);
-            if (index >= 0)
-            {
-                GalacticData.Personajes[index] = GalacticData.Personajes[index] with
-                {
-                    Estado = "muerto"
-                };
-            }
+            ev.Participaciones.Remove(anterior);
+            db.Participaciones.Remove(anterior);
         }
+        foreach (var pid in d.ParticipanteIds.Where(pid => ev.Participaciones.All(x => x.PersonajeId != pid)))
+        {
+            ev.Participaciones.Add(new Participacion { EventoId = id, PersonajeId = pid });
+        }
+        await db.SaveChangesAsync();
+        return Resultado<Evento>.Ok(await Evento(id) ?? ev);
     }
-
-    private static bool ContieneValor(IEnumerable<string> valores, string valor) =>
-        !string.IsNullOrWhiteSpace(valor) &&
-        valores.Any(item => item.Equals(valor.Trim(), StringComparison.OrdinalIgnoreCase));
-
-    private static string NormalizarValor(string valor, IEnumerable<string> valores) =>
-        valores.First(item => item.Equals(valor.Trim(), StringComparison.OrdinalIgnoreCase));
+    public async Task<Resultado<object>> Mvp(int id)
+    {
+        var ev = await db.Eventos.AsNoTracking().Include(x => x.Participaciones).FirstOrDefaultAsync(x => x.Id == id);
+        if (ev == null)
+            return Resultado<object>.Fail("Evento no existe", 404);
+        var ids = ev.Participaciones.Select(x => x.PersonajeId).ToList();
+        var carta =
+            await db.Cartas.AsNoTracking().Where(x => ids.Contains(x.PersonajeId)).OrderByDescending(x => x.Poder).FirstOrDefaultAsync();
+        if (carta == null)
+            return Resultado<object>.Fail("Participantes sin cartas", 400);
+        var personaje = await db.Personajes.AsNoTracking().FirstAsync(x => x.Id == carta.PersonajeId);
+        return Resultado<object>.Ok(new { personaje, carta });
+    }
 }

@@ -1,174 +1,75 @@
-# Catálogo Galáctico API
+# Catálogo Galáctico — Trabajo final de Tecnologías Web I
 
-API REST académica desarrollada con ASP.NET Core Minimal API para consultar y administrar personajes,
-cartas coleccionables y eventos de un universo galáctico.
-
-La aplicación usa almacenamiento en memoria. Todos los cambios realizados mediante la API se pierden
-cuando el proceso se reinicia y las colecciones vuelven a sus datos iniciales.
-
-## Tecnologías
-
-- .NET 10
-- ASP.NET Core Minimal API
-- OpenAPI
-- Swagger UI
-- C#
-
-## Organización
-
-```text
-Data/       Listas en memoria y datos iniciales
-Dtos/       Datos de entrada y respuestas calculadas
-Endpoints/  Rutas agrupadas por recurso
-Models/     Personaje, CardPersonaje y Evento
-Services/   Validaciones, relaciones, estadísticas y simulación
-Program.cs  Registro de servicios, OpenAPI y endpoints
-```
+Adaptación del proyecto Minimal API original a **ASP.NET Core Web API .NET 10 con controladores**, MySQL y EF Core, siguiendo la arquitectura del ejemplo BackofficeApi del docente. El código original se conserva como referencia conceptual; esta implementación no es idéntica a él.
 
 ## Requisitos
 
-- .NET SDK 10.0 o superior
-- Visual Studio Code, Visual Studio u otro editor compatible con C#
+- SDK .NET 10, VS Code con C# Dev Kit (opcional)
+- Servidor MySQL en ejecución y una base `catalogo_galactico` creada
+- `dotnet-ef` instalado (`dotnet tool install --global dotnet-ef --version 9.0.0`, o `dotnet tool update --global dotnet-ef --version 9.0.0`)
 
-## Ejecución
-
-Desde la carpeta del proyecto:
+## Configuración segura (NO subir secretos al repositorio)
 
 ```bash
+# Ejecutar en la carpeta donde está el .csproj
 dotnet restore
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3306;database=catalogo_galactico;user=USUARIO_FICTICIO;password=CLAVE_FICTICIA"
+```
+
+Sustituye los datos ficticios por tu usuario y contraseña reales, **solo en tu equipo**.
+
+Para generar la clave AES de 256 bits puedes ejecutar el comando siguiente en una terminal con Python instalado y COPIAR el valor generado:
+
+```bash
+python -c "import secrets,base64;print(base64.b64encode(secrets.token_bytes(32)).decode())"
+```
+
+Después configura el valor que recibiste:
+
+```bash
+dotnet user-secrets set "Cifrado:Clave" "PEGA_AQUI_BASE64_GENERADO"
+```
+
+## Ejecutar
+
+```bash
+dotnet ef migrations list
+dotnet ef database update
 dotnet run
 ```
 
-Con el perfil HTTP incluido, la API queda disponible en:
+Si recibes un problema de conexión, verifica que MySQL esté iniciado y la base exista. No borres migraciones aplicadas ni compartas claves en capturas.
 
-```text
-http://localhost:5048
-```
-
-Swagger está disponible en:
-
-```text
-http://localhost:5048/swagger
-```
-
-También se puede usar `ProyectoCatalogoGalactico.http` para enviar solicitudes desde Visual Studio Code.
-
-## Convención de fechas
-
-La propiedad `Fecha` de un evento es un número entero que permite ordenar cronológicamente:
-
-| Fecha narrativa | Valor |
-| --- | ---: |
-| 10 BBY | -10 |
-| 5 BBY | -5 |
-| Batalla de Yavin | 0 |
-| 3 ABY | 3 |
-| 10 ABY | 10 |
+Swagger: `http://localhost:5080/swagger` al ejecutar con `dotnet run --launch-profile http`.
 
 ## Endpoints
 
-### Personajes
+- `GET, POST /api/personajes`; `GET, PUT, DELETE /api/personajes/{id}`; `GET /api/personajes/ranking`; `GET /api/personajes/{id}/eventos`
+- `GET, POST /api/cartas`; `GET, PUT, DELETE /api/cartas/{id}`
+- `GET, POST /api/planetas`; `GET, PUT, DELETE /api/planetas/{id}`; `GET /api/planetas/actividad`; `GET /api/planetas/{id}/eventos`
+- `POST /api/planetas/{id}/simular-invasion`; `GET /api/planetas/{id}/estadisticas`
+- `GET, POST /api/eventos`; `GET, PUT /api/eventos/{id}`; `GET /api/eventos/{id}/mvp`; `POST /api/eventos/{id}/simular`; `GET /api/eventos/{id}/resultado`; `GET /api/eventos/{id}/historial`
+- `POST /api/usuarios`; `GET /api/usuarios/{id}` (sin login ni JWT)
 
-| Método | Ruta | Descripción |
-| --- | --- | --- |
-| GET | `/personajes` | Lista personajes y acepta filtros opcionales |
-| GET | `/personajes/{id}` | Obtiene un personaje |
-| POST | `/personajes` | Crea un personaje |
-| PUT | `/personajes/{id}` | Actualiza un personaje |
-| DELETE | `/personajes/{id}` | Elimina un personaje sin relaciones |
-| GET | `/personajes/{id}/eventos` | Lista los eventos del personaje |
-| GET | `/personajes/ranking?por=poder` | Ordena personajes por poder |
+## Relaciones y simulación
 
-Filtros combinables:
+Planeta 1:N Evento; Personaje 1:0..1 Carta; Personaje N:M Evento mediante Participacion; Evento 1:N Simulacion.
 
-```http
-GET /personajes?faccion=Imperio&fuerzaSensitivo=true
-```
+Solo se permite simular eventos con exactamente dos facciones, participantes vivos y cartas. Los ataques defensivos de una invasión obtienen bonificación de **5% por nivel de peligro** del planeta. Las bajas son deterministas: la facción derrotada pierde la mitad de sus miembros (redondeada hacia arriba), seleccionados de menor poder; los empates no producen bajas. Cada ejecución se agrega al historial y no sobrescribe simulaciones anteriores. Los cambios quedan en una única operación `SaveChangesAsync`.
 
-### Cartas
+## Migraciones
 
-| Método | Ruta | Descripción |
-| --- | --- | --- |
-| GET | `/cartas` | Lista todas las cartas |
-| GET | `/cartas/{id}` | Obtiene una carta |
-| POST | `/cartas` | Crea la carta principal de un personaje |
-| PUT | `/cartas/{id}` | Actualiza una carta |
+El proyecto incluye tres migraciones (`Inicial`, `AgregarSimulaciones` y `ConvertirSimulacionEnHistorial`) y snapshot. En caso de modificar entidades, usa `dotnet ef migrations add NombreDeCambio` para generar una migración adicional. Verifica en MySQL el estado de `__EFMigrationsHistory`.
 
-### Eventos
+## Demostración de protección
 
-| Método | Ruta | Descripción |
-| --- | --- | --- |
-| GET | `/eventos` | Lista todos los eventos |
-| GET | `/eventos/{id}` | Obtiene un evento |
-| POST | `/eventos` | Crea un evento |
-| PUT | `/eventos/{id}` | Actualiza un evento |
-| GET | `/eventos/{id}/mvp` | Obtiene el participante con mayor poder |
-| POST | `/eventos/{id}/simular` | Simula una batalla entre facciones |
+1. Crear un usuario mediante `POST /api/usuarios`.
+2. Consultar en MySQL: `SELECT Id, CorreoBusquedaHash, CorreoCifrado, PasswordHash FROM Usuarios;`. Ninguno de esos campos debe mostrar correo o contraseña en texto plano.
+3. Consultar `GET /api/usuarios/{id}` y comprobar que entrega el correo legible y **nunca** la contraseña ni el hash.
+4. `CorreoBusquedaHash` es una huella HMAC para prevenir duplicados sin guardar correo claro; `CorreoCifrado` usa AES-GCM.
 
-## Ejemplos
+## Git y entrega
 
-Crear un personaje:
+Realiza commits pequeños verificables, agrega `USO_DE_IA.md` con tus cambios reales y al entregar usa `git tag entrega-final` y `git push origin entrega-final`. Comprueba que no haya secretos en commits pasados.
 
-```json
-{
-  "nombre": "Ahsoka Tano",
-  "especie": "Togruta",
-  "faccion": "Neutral",
-  "afiliacion": "Orden Jedi",
-  "estado": "vivo",
-  "fuerzaSensitivo": true
-}
-```
-
-Crear una carta:
-
-```json
-{
-  "personajeId": 5,
-  "poder": 90,
-  "habilidadEspecial": "Doble sable",
-  "arma": "Sables de luz",
-  "nivelPeligrosidad": 9,
-  "imagenUrl": "https://upload.wikimedia.org/wikipedia/en/d/d7/Ahsoka_Tano.png"
-}
-```
-
-Crear un evento:
-
-```json
-{
-  "nombre": "Encuentro galáctico",
-  "fecha": 2,
-  "ubicacion": "Borde Exterior",
-  "descripcion": "Encuentro entre dos facciones.",
-  "participanteIds": [2, 5],
-  "fallecidoIds": []
-}
-```
-
-## Reglas de negocio
-
-- La facción debe ser `Rebelde`, `Imperio` o `Neutral`.
-- El estado debe ser `vivo`, `muerto` o `desconocido`.
-- Cada personaje puede tener una sola carta principal.
-- El poder debe estar entre 0 y 100.
-- El nivel de peligrosidad debe estar entre 1 y 10.
-- Todo participante y fallecido debe referenciar un personaje existente.
-- Un fallecido debe formar parte de los participantes del evento.
-- Un personaje no puede participar en eventos posteriores a su muerte registrada.
-- Registrar una muerte cambia automáticamente el estado del personaje a `muerto`.
-- No se puede eliminar un personaje que tenga una carta o participe en eventos.
-- La simulación exige al menos dos participantes, sus cartas y dos facciones diferentes.
-
-## Respuestas HTTP
-
-- `200 OK`: consulta, actualización o simulación correcta.
-- `201 Created`: recurso creado correctamente.
-- `204 No Content`: eliminación correcta.
-- `400 Bad Request`: datos inválidos o incumplimiento de reglas.
-- `404 Not Found`: recurso inexistente.
-
-## Imágenes
-
-Los datos iniciales usan URLs de imágenes publicadas en Wikipedia o Wikimedia. Para usos distintos al
-académico se debe revisar la licencia individual de cada imagen.
+**Estado:** paquete preparado como base de implementación; debe verificarse compilación, migraciones, endpoints y MySQL en el equipo del estudiante antes de entregar. No sustituye la defensa individual.

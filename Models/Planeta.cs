@@ -1,4 +1,3 @@
-AppDbContext.cs
 using System.Text.Json.Serialization;
 namespace CatalogoGalacticoWebApi.Models;
 public class Planeta

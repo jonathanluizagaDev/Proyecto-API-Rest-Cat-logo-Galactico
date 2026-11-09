@@ -9,7 +9,12 @@ public class PersonajesController(ICatalogoService service) : ApiControllerBase
     public async Task<IActionResult> Lista([FromQuery] string? faccion, [FromQuery] bool? fuerzaSensitivo) => Ok(
         await service.Personajes(faccion, fuerzaSensitivo));
     [HttpGet("ranking")]
-    public async Task<IActionResult> Ranking() => Ok(await service.Ranking());
+    public async Task<IActionResult> Ranking([FromQuery] string por = "poder")
+    {
+        if (!string.Equals(por, "poder", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { error = "El ranking disponible se ordena con por=poder" });
+        return Ok(await service.Ranking());
+    }
     [HttpGet("{id:int}")]
     public async Task<IActionResult> Uno(int id)
     {

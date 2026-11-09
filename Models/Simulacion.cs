@@ -10,5 +10,8 @@ public class Simulacion
     public string Ganador { get; set; } = "";
     public string Criterio { get; set; } = "";
     public string TotalesJson { get; set; } = "[]";
+    public int CantidadDeBajas { get; set; }
+    public string FallecidosJson { get; set; } = "[]";
+    public string SobrevivientesJson { get; set; } = "[]";
     public DateTime FechaEjecucionUtc { get; set; } = DateTime.UtcNow;
 }

@@ -67,7 +67,10 @@ Content-Type: application/json
 {"personajeId":{{personajeRebeldeId}},"poder":50,"habilidadEspecial":"Duplicada","arma":"Bláster","nivelPeligrosidad":5,"imagenUrl":"https://example.com/duplicada.jpg"}
 
 ### Ranking
-GET {{base}}/api/personajes/ranking
+GET {{base}}/api/personajes/ranking?por=poder
+
+### Ranking con criterio no soportado (esperado: 400)
+GET {{base}}/api/personajes/ranking?por=nombre
 
 ### Crear evento
 POST {{base}}/api/eventos
@@ -84,6 +87,9 @@ Content-Type: application/json
 ### Consultar MVP
 GET {{base}}/api/eventos/{{eventoId}}/mvp
 
+### Consultar evento con planeta y participantes
+GET {{base}}/api/eventos/{{eventoId}}
+
 ### Simular batalla
 POST {{base}}/api/eventos/{{eventoId}}/simular
 
@@ -92,6 +98,11 @@ GET {{base}}/api/eventos/{{eventoId}}/resultado
 
 ### Consultar historial
 GET {{base}}/api/eventos/{{eventoId}}/historial
+
+### Simular nuevamente
+# Solo funciona si después de la primera batalla todavía quedan personajes vivos
+# de las dos facciones. El nuevo resultado se agrega sin modificar el anterior.
+POST {{base}}/api/eventos/{{eventoId}}/simular
 
 ### Consultar estadísticas del planeta
 GET {{base}}/api/planetas/{{planetaId}}/estadisticas

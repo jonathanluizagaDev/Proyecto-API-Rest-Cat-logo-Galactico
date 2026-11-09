@@ -6,6 +6,7 @@ public class Evento
     public string Nombre { get; set; } = "";
     public int Fecha { get; set; } // Año galáctico (compatibilidad con la Minimal API original)
     public string Descripcion { get; set; } = "";
+    public string Estado { get; set; } = "pendiente";
     public int PlanetaId { get; set; }
     [JsonIgnore]
     public Planeta Planeta { get; set; } = null!;

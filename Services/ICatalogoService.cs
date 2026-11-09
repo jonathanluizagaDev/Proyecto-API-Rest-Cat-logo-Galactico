@@ -24,6 +24,7 @@ public interface ICatalogoService
     Task<List<object>> ActividadPlanetas();
     Task<List<Evento>> Eventos();
     Task<Evento?> Evento(int id);
+    Task<EventoDetalleResponse?> EventoDetalle(int id);
     Task<Resultado<Evento>> CrearEvento(EventoInput input);
     Task<Resultado<Evento>> EditarEvento(int id, EventoInput input);
     Task<Resultado<object>> Mvp(int id);

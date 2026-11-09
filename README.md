@@ -13,7 +13,7 @@ Adaptación del proyecto Minimal API original a **ASP.NET Core Web API .NET 10 c
 ```bash
 # Ejecutar en la carpeta donde está el .csproj
 dotnet restore
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3306;database=catalogo_galactico;user=USUARIO_FICTICIO;password=CLAVE_FICTICIA"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3306;database=catalogo_galactico;user=USUARIO_FICTICIO;password=CLAVE_FICTICIA;SslMode=None"
 ```
 
 Sustituye los datos ficticios por tu usuario y contraseña reales, **solo en tu equipo**.
@@ -43,7 +43,7 @@ Swagger: `http://localhost:5080/swagger` al ejecutar con `dotnet run --launch-pr
 
 ## Endpoints
 
-- `GET, POST /api/personajes`; `GET, PUT, DELETE /api/personajes/{id}`; `GET /api/personajes/ranking`; `GET /api/personajes/{id}/eventos`
+- `GET, POST /api/personajes`; `GET, PUT, DELETE /api/personajes/{id}`; `GET /api/personajes/ranking?por=poder`; `GET /api/personajes/{id}/eventos`
 - `GET, POST /api/cartas`; `GET, PUT, DELETE /api/cartas/{id}`
 - `GET, POST /api/planetas`; `GET, PUT, DELETE /api/planetas/{id}`; `GET /api/planetas/actividad`; `GET /api/planetas/{id}/eventos`
 - `POST /api/planetas/{id}/simular-invasion`; `GET /api/planetas/{id}/estadisticas`
@@ -54,11 +54,13 @@ Swagger: `http://localhost:5080/swagger` al ejecutar con `dotnet run --launch-pr
 
 Planeta 1:N Evento; Personaje 1:0..1 Carta; Personaje N:M Evento mediante Participacion; Evento 1:N Simulacion.
 
-Solo se permite simular eventos con exactamente dos facciones, participantes vivos y cartas. Los ataques defensivos de una invasión obtienen bonificación de **5% por nivel de peligro** del planeta. Las bajas son deterministas: la facción derrotada pierde la mitad de sus miembros (redondeada hacia arriba), seleccionados de menor poder; los empates no producen bajas. Cada ejecución se agrega al historial y no sobrescribe simulaciones anteriores. Los cambios quedan en una única operación `SaveChangesAsync`.
+Solo se permite simular eventos con exactamente dos facciones disponibles y participantes vivos con carta. En una batalla normal se considera defensora la facción del participante vivo con ID menor; en una invasión se usa la facción defensora indicada en el cuerpo. El defensor recibe **5% de poder por nivel de peligro** del planeta.
+
+Gana el mayor poder final. Un empate se resuelve primero por poder base y, si continúa, por el nombre de facción en orden alfabético. La cantidad de bajas usa una fórmula determinista que combina poder relativo y peligro: `techo(perdedores × [25% + 50% del poder relativo ganador + 2.5% por nivel de peligro])`. Fallecen primero los perdedores de menor poder. Cada simulación guarda sus propios totales, bajas, sobrevivientes y fecha; una nueva ejecución no sobrescribe el historial anterior y excluye a los personajes ya fallecidos. Evento, participaciones y simulación se guardan dentro de una transacción.
 
 ## Migraciones
 
-El proyecto incluye cuatro migraciones (`Inicial`, `AgregarSimulaciones`, `ConvertirSimulacionEnHistorial` y `SincronizarModelo`) y un snapshot sincronizado. En caso de modificar entidades, usa `dotnet ef migrations add NombreDeCambio` para generar una migración adicional. Verifica en MySQL el estado de `__EFMigrationsHistory`.
+El proyecto incluye seis migraciones (`Inicial`, `AgregarSimulaciones`, `ConvertirSimulacionEnHistorial`, `SincronizarModelo`, `CompletarPropuesta` y `ResultadoDeParticipacion`) y un snapshot sincronizado. En caso de modificar entidades, usa `dotnet ef migrations add NombreDeCambio` para generar una migración adicional. Verifica en MySQL el estado de `__EFMigrationsHistory`.
 
 ## Demostración de protección
 
@@ -76,10 +78,11 @@ Realiza commits pequeños verificables, agrega `USO_DE_IA.md` con tus cambios re
 Comprobado el 9 de noviembre de 2026 con .NET SDK 10.0.403 y MySQL 8.4.9:
 
 - compilación con 0 errores;
-- cuatro migraciones aplicadas y modelo sin cambios pendientes;
+- seis migraciones aplicadas y modelo sin cambios pendientes;
 - CRUD de planetas, personajes, cartas y eventos;
 - respuestas 409 para planeta/carta duplicados y para intentar revivir un personaje fallecido;
-- simulación de batalla, bajas, historial, MVP e invasión con bono defensivo;
+- dos simulaciones consecutivas de un evento con bajas históricas independientes, estado del evento, detalle de planeta y participantes;
+- simulación de batalla, bajas reproducibles, MVP e invasión con bono defensivo;
 - alta y consulta segura de usuarios, detección de correo duplicado y ausencia de correo/contraseña en texto plano;
 - OpenAPI, Swagger y endpoints principales con respuesta HTTP 200.
 

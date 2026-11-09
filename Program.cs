@@ -5,10 +5,15 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 var conexion = builder.Configuration.GetConnectionString("DefaultConnection") ??
                throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection con dotnet user-secrets.");
 
-builder.Services.AddDbContext<AppDbContext>(options => options.UseMySql(conexion, ServerVersion.AutoDetect(conexion)));
+// La versión explícita evita que las herramientas de EF necesiten abrir una conexión
+// solo para descubrir la versión del servidor durante el diseño de migraciones.
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseMySql(conexion, new MySqlServerVersion(new Version(8, 4, 9))));
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<ICatalogoService, CatalogoService>();

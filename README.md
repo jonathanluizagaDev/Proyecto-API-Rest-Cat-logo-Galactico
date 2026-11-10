@@ -4,6 +4,8 @@ Adaptación del proyecto Minimal API original a **ASP.NET Core Web API .NET 10 c
 
 Documentación detallada del código: [DOCUMENTACION_TECNICA.md](DOCUMENTACION_TECNICA.md).
 
+Guía didáctica archivo por archivo: [GUIA_DE_ESTUDIO_DEL_CODIGO.md](GUIA_DE_ESTUDIO_DEL_CODIGO.md).
+
 ## Requisitos
 
 - SDK .NET 10, VS Code con C# Dev Kit (opcional)

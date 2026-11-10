@@ -82,6 +82,7 @@ CatalogoGalacticoGitHub/
 ├── Services/             Reglas de negocio y seguridad
 ├── Program.cs            Inicio y configuración de la aplicación
 ├── DOCUMENTACION_TECNICA.md Explicación integral del código y su arquitectura
+├── GUIA_DE_ESTUDIO_DEL_CODIGO.md Recorrido didáctico archivo por archivo
 ├── PRUEBAS.http          Solicitudes manuales para probar la API
 ├── README.md             Instalación y uso rápido
 ├── KANBAN.md             Seguimiento de tareas
@@ -896,6 +897,7 @@ La validación de servicio y la clave foránea configurada con `DeleteBehavior.R
 | `.editorconfig` | Estilo de código del proyecto |
 | `.gitignore` | Archivos que Git no debe subir |
 | `DOCUMENTACION_TECNICA.md` | Arquitectura, entidades, rutas, reglas y operación del sistema |
+| `GUIA_DE_ESTUDIO_DEL_CODIGO.md` | Explicación didáctica de sintaxis, archivos y flujo del código |
 | `PRUEBAS.http` | Casos de prueba manuales |
 | `README.md` | Guía rápida de instalación |
 | `KANBAN.md` | Estado de tareas |

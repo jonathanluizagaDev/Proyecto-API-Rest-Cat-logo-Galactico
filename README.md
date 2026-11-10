@@ -2,6 +2,8 @@
 
 Adaptación del proyecto Minimal API original a **ASP.NET Core Web API .NET 10 con controladores**, MySQL y EF Core, siguiendo la arquitectura del ejemplo BackofficeApi del docente. El código original se conserva como referencia conceptual; esta implementación no es idéntica a él.
 
+Documentación detallada del código: [DOCUMENTACION_TECNICA.md](DOCUMENTACION_TECNICA.md).
+
 ## Requisitos
 
 - SDK .NET 10, VS Code con C# Dev Kit (opcional)

@@ -213,12 +213,33 @@ public class CatalogoService(AppDbContext db) : ICatalogoService
     }
     public Task<List<Evento>> Eventos() => db.Eventos.AsNoTracking().Include(x => x.Participaciones).OrderBy(x => x.Id).ToListAsync();
     public Task<Evento?> Evento(int id) => db.Eventos.AsNoTracking().Include(x => x.Participaciones).FirstOrDefaultAsync(x => x.Id == id);
+    public Task<EventoDetalleResponse?> EventoDetalle(int id) => db.Eventos.AsNoTracking()
+        .Where(x => x.Id == id)
+        .Select(x => new EventoDetalleResponse(
+            x.Id,
+            x.Nombre,
+            x.Fecha,
+            x.Descripcion,
+            x.Estado,
+            new PlanetaEventoResponse(x.Planeta.Id, x.Planeta.Nombre, x.Planeta.Sector, x.Planeta.Clima, x.Planeta.NivelPeligro),
+            x.Participaciones.OrderBy(p => p.PersonajeId)
+                .Select(p => new ParticipanteEventoResponse(
+                    p.PersonajeId,
+                    p.Personaje.Nombre,
+                    p.Personaje.Faccion,
+                    p.Personaje.Estado,
+                    p.Resultado,
+                    p.Personaje.Carta == null ? null : p.Personaje.Carta.Poder))
+                .ToList()))
+        .FirstOrDefaultAsync();
     private async Task<string?> ValidarEvento(EventoInput d, int? eventoId = null)
     {
         if (string.IsNullOrWhiteSpace(d.Nombre) || string.IsNullOrWhiteSpace(d.Descripcion))
             return "Nombre y descripción obligatorios";
         if (!await db.Planetas.AnyAsync(x => x.Id == d.PlanetaId))
             return "Planeta no existe";
+        if (!string.Equals(d.Estado?.Trim(), "pendiente", StringComparison.OrdinalIgnoreCase))
+            return "Un evento nuevo o editable debe tener estado pendiente";
         if (d.ParticipanteIds == null || d.ParticipanteIds.Count < 2 || d.ParticipanteIds.Count != d.ParticipanteIds.Distinct().Count())
             return "Se requieren al menos 2 participantes únicos";
         var p = await db.Personajes.Where(x => d.ParticipanteIds.Contains(x.Id)).ToListAsync();
@@ -238,8 +259,9 @@ public class CatalogoService(AppDbContext db) : ICatalogoService
         var ev = new Evento { Nombre = d.Nombre.Trim(),
             Fecha = d.Fecha,
             Descripcion = d.Descripcion.Trim(),
+            Estado = "pendiente",
             PlanetaId = d.PlanetaId,
-            Participaciones = d.ParticipanteIds.Select(id => new Participacion { PersonajeId = id }).ToList() };
+            Participaciones = d.ParticipanteIds.Select(id => new Participacion { PersonajeId = id, Resultado = "pendiente" }).ToList() };
         db.Eventos.Add(ev);
         await db.SaveChangesAsync();
         return Resultado<Evento>.Ok(await Evento(ev.Id) ?? ev, 201);
@@ -257,6 +279,7 @@ public class CatalogoService(AppDbContext db) : ICatalogoService
         ev.Nombre = d.Nombre.Trim();
         ev.Fecha = d.Fecha;
         ev.Descripcion = d.Descripcion.Trim();
+        ev.Estado = "pendiente";
         ev.PlanetaId = d.PlanetaId;
         var viejos = ev.Participaciones.Where(x => !d.ParticipanteIds.Contains(x.PersonajeId)).ToList();
         foreach (var anterior in viejos)
@@ -266,7 +289,7 @@ public class CatalogoService(AppDbContext db) : ICatalogoService
         }
         foreach (var pid in d.ParticipanteIds.Where(pid => ev.Participaciones.All(x => x.PersonajeId != pid)))
         {
-            ev.Participaciones.Add(new Participacion { EventoId = id, PersonajeId = pid });
+            ev.Participaciones.Add(new Participacion { EventoId = id, PersonajeId = pid, Resultado = "pendiente" });
         }
         await db.SaveChangesAsync();
         return Resultado<Evento>.Ok(await Evento(id) ?? ev);

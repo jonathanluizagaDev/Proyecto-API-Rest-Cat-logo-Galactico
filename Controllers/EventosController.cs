@@ -10,7 +10,7 @@ public class EventosController(ICatalogoService service, ISimulacionService simu
     [HttpGet("{id:int}")]
     public async Task<IActionResult> Uno(int id)
     {
-        var e = await service.Evento(id);
+        var e = await service.EventoDetalle(id);
         return e == null ? NotFound() : Ok(e);
     }
     [HttpPost]

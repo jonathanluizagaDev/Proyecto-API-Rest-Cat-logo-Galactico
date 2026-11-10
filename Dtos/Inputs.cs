@@ -14,7 +14,12 @@ public record CartaInput(int PersonajeId,
     [Required] string ImagenUrl);
 public record PlanetaInput([Required] string Nombre, [Required] string Sector, [Required] string Clima, [Range(1, 10)] int NivelPeligro);
 public record EventoInput(
-    [Required] string Nombre, int Fecha, [Required] string Descripcion, int PlanetaId, [Required] List<int> ParticipanteIds);
+    [Required] string Nombre,
+    int Fecha,
+    [Required] string Descripcion,
+    int PlanetaId,
+    [Required] List<int> ParticipanteIds,
+    string Estado = "pendiente");
 public record InvasionInput([Required] string Nombre,
     int Fecha,
     [Required] string Descripcion,
@@ -30,5 +35,23 @@ public record ResultadoSimulacion(int EventoId,
     string Ganador,
     string Criterio,
     List<TotalFaccionResponse> Totales,
+    int CantidadDeBajas,
     List<int> FallecidoIds,
-    List<int> SobrevivienteIds);
+    List<int> SobrevivienteIds,
+    DateTime FechaEjecucionUtc);
+public record PlanetaEventoResponse(int Id, string Nombre, string Sector, string Clima, int NivelPeligro);
+public record ParticipanteEventoResponse(
+    int PersonajeId,
+    string Nombre,
+    string Faccion,
+    string Estado,
+    string Resultado,
+    int? Poder);
+public record EventoDetalleResponse(
+    int Id,
+    string Nombre,
+    int Fecha,
+    string Descripcion,
+    string Estado,
+    PlanetaEventoResponse Planeta,
+    List<ParticipanteEventoResponse> Participantes);

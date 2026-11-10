@@ -71,6 +71,11 @@ namespace CatalogoGalacticoWebApi.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
                     b.Property<int>("Fecha")
                         .HasColumnType("int");
 
@@ -96,8 +101,10 @@ namespace CatalogoGalacticoWebApi.Migrations
                     b.Property<int>("PersonajeId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("Fallecido")
-                        .HasColumnType("tinyint(1)");
+                    b.Property<string>("Resultado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.HasKey("EventoId", "PersonajeId");
 
@@ -185,6 +192,9 @@ namespace CatalogoGalacticoWebApi.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("CantidadDeBajas")
+                        .HasColumnType("int");
+
                     b.Property<string>("Criterio")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -192,10 +202,18 @@ namespace CatalogoGalacticoWebApi.Migrations
                     b.Property<int>("EventoId")
                         .HasColumnType("int");
 
+                    b.Property<string>("FallecidosJson")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<DateTime>("FechaEjecucionUtc")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Ganador")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("SobrevivientesJson")
                         .IsRequired()
                         .HasColumnType("longtext");
 

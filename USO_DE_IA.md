@@ -20,6 +20,9 @@ Herramienta utilizada: ChatGPT/Codex como apoyo durante el desarrollo y la verif
 - Se sincronizó el snapshot de Entity Framework con la metadata `AUTO_INCREMENT` de MySQL.
 - Se incorporaron hash de contraseñas, HMAC para búsqueda de correos y cifrado AES-GCM.
 - Se actualizaron README, solicitudes HTTP y Kanban con resultados comprobados.
+- Se completaron las diferencias finales de la propuesta: estado de evento, detalle con planeta y participantes, criterio de ranking y resultados propios por simulación.
+- Se definió una fórmula reproducible donde el peligro del planeta modifica el poder defensor y la cantidad de bajas.
+- Se agregó una transacción explícita para guardar de forma atómica la simulación, los fallecidos y el estado del evento.
 
 ## Verificaciones realizadas
 
@@ -27,10 +30,11 @@ El 9 de noviembre de 2026 se comprobó localmente:
 
 - .NET SDK 10.0.403 y MySQL 8.4.9;
 - compilación con 0 errores;
-- cuatro migraciones aplicadas y modelo sin cambios pendientes;
+- seis migraciones aplicadas y modelo sin cambios pendientes;
 - creación, consulta, actualización y eliminación mediante la API;
 - validación de duplicados y restricciones de relaciones;
-- batalla con ganador, bajas, resultado, historial y MVP;
+- dos batallas consecutivas del mismo evento con historiales de bajas independientes;
+- batalla con ganador, desempate definido, bajas dependientes del peligro, resultado y MVP;
 - invasión con bono defensivo de 5% por nivel de peligro;
 - almacenamiento de correo cifrado, huella HMAC y contraseña hasheada;
 - respuesta pública de usuario sin contraseña ni hashes;

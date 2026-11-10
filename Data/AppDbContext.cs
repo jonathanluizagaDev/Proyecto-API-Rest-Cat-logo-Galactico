@@ -42,6 +42,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Evento>(e =>
         {
+            e.Property(ev => ev.Estado).IsRequired().HasMaxLength(30);
             e.HasOne(ev => ev.Planeta)
                 .WithMany(p => p.Eventos)
                 .HasForeignKey(ev => ev.PlanetaId)
@@ -51,6 +52,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Participacion>(e =>
         {
             e.HasKey(p => new { p.EventoId, p.PersonajeId });
+            e.Property(p => p.Resultado).IsRequired().HasMaxLength(20);
 
             e.HasOne(p => p.Evento)
                 .WithMany(ev => ev.Participaciones)

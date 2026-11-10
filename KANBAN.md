@@ -13,5 +13,12 @@
 | — | — | — | Escribir migraciones inicial y evolución |
 | — | — | — | Preparar documentación inicial |
 | — | — | — | Abrir proyecto y restaurar dependencias |
+| — | — | — | Agregar estado pendiente/simulado a eventos |
+| — | — | — | Guardar bajas y sobrevivientes por simulación |
+| — | — | — | Aplicar peligro del planeta a poder y bajas |
+| — | — | — | Definir desempate reproducible y transacciones |
+| — | — | — | Mostrar planeta y participantes en detalle de evento |
+| — | — | — | Validar ranking con `por=poder` |
+| — | — | — | Probar dos simulaciones con historial independiente |
 
 Mueve una tarjeta a **Terminado** solo después de probarla en tu computadora.
